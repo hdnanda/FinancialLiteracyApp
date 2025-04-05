@@ -18,13 +18,6 @@ const settingsOverlay = document.getElementById('settings-overlay');
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up initial login state for testing
-    if (!localStorage.getItem('isLoggedIn')) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('username', 'Test User');
-        localStorage.setItem('userEmail', 'test@example.com');
-    }
-    
     // Check if user is logged in
     checkAuthentication();
     
@@ -47,13 +40,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (settingsOverlay) {
         settingsOverlay.addEventListener('click', closeSettingsPanel);
     }
-    
-    // Setup keyboard events for accessibility (Escape key closes panel)
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape' && settingsPanel && settingsPanel.classList.contains('active')) {
-            closeSettingsPanel();
-        }
-    });
 });
 
 /**

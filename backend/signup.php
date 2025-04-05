@@ -30,7 +30,7 @@ error_log("Raw input: " . file_get_contents('php://input'));
 
 // Database configuration
 $host = 'localhost';
-$dbname = 'financial_literacy';
+$dbname = 'financial_literacy_db';
 $db_username = 'root';  // Changed variable name to avoid conflict
 $db_password = '';      // Changed variable name to avoid conflict
 
@@ -90,7 +90,7 @@ try {
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
     // Insert new user
-    $stmt = $pdo->prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
+    $stmt = $pdo->prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)');
     $stmt->execute([$username, $email, $hashedPassword]);
     error_log("User created successfully: " . $username);
 

@@ -45,7 +45,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 2rem;
+            padding: 1rem;
+            padding-left: 0;
             background: var(--header-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -53,40 +54,37 @@
         }
 
         .logo {
+            font-family: "Times New Roman", serif;
             font-size: 2.5rem;
-            font-weight: bold;
-            width: 50px;
-            height: 50px;
+            font-weight: 700;
+            color: var(--text-color);
+            line-height: 1;
+            text-decoration: none;
+            transition: color 0.3s ease, transform 0.2s ease;
+            cursor: pointer;
+            padding: 0 1.5rem;
+            margin: 0;
             display: flex;
             align-items: center;
-            justify-content: center;
-            position: relative;
-            font-family: 'Times New Roman', serif;
-            background: transparent;
-            filter: brightness(0);
-            transition: filter 0.3s ease;
+            height: 100%;
         }
 
-        .logo::before {
-            content: 'T';
-            position: absolute;
-            font-family: 'Times New Roman', serif;
+        .logo:hover {
+            transform: scale(1.05);
         }
 
-        :root[data-theme="dark"] .logo {
-            filter: brightness(1);
-            color: #fff;
+        [data-theme="dark"] .logo {
+            color: #ffffff;
         }
 
-        :root[data-theme="light"] .logo {
-            filter: brightness(0);
-            color: #000;
+        [data-theme="light"] .logo {
+            color: #000000;
         }
 
         .header-controls {
             display: flex;
-            gap: 1rem;
             align-items: center;
+            gap: 0.5rem;
         }
 
         .header-controls button {
@@ -102,6 +100,34 @@
 
         .header-controls button:hover {
             opacity: 1;
+        }
+
+        /* Add back button styling */
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 1.2rem;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: auto;
+        }
+
+        .back-btn:hover {
+            opacity: 1;
+            background: var(--card-bg);
+        }
+
+        .back-btn i {
+            font-size: 1rem;
         }
 
         .main-content {
@@ -575,6 +601,32 @@
                         <span class="user-stat-label">Next Level:</span>
                         <span id="modalNextLevel">50 XP needed</span>
                     </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="logout-btn" onclick="logout()" style="
+                            background: var(--accent-color);
+                            color: white;
+                            border: none;
+                            border-radius: 20px;
+                            padding: 0.8rem 1.5rem;
+                            font-size: 1rem;
+                            cursor: pointer;
+                            flex: 1;
+                            transition: all 0.2s ease;
+                        ">Log Out</button>
+                        <a href="signup.html" style="
+                            background: var(--card-bg);
+                            color: var(--text-color);
+                            border: 1px solid var(--border-color);
+                            border-radius: 20px;
+                            padding: 0.8rem 1.5rem;
+                            font-size: 1rem;
+                            cursor: pointer;
+                            text-decoration: none;
+                            text-align: center;
+                            flex: 1;
+                            transition: all 0.2s ease;
+                        ">Create Account</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -634,26 +686,108 @@
             // Add function to check if a topic's exam is completed
             function isTopicExamCompleted(topicId) {
                 const completedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
-                return completedExams.includes(topicId);
+                console.log(`\n[Exam Check] Checking if topic ${topicId} exam is completed...`);
+                console.log(`[Exam Check] Found ${completedExams.length} completed exams in storage:`, completedExams);
+                
+                const isCompleted = completedExams.some(exam => 
+                    (typeof exam === 'object' && exam.topicId === topicId) || 
+                    (typeof exam === 'number' && exam === topicId)
+                );
+                
+                if (isCompleted) {
+                    console.log(`[Exam Check] Topic ${topicId} exam is COMPLETED ✓`);
+                } else {
+                    console.log(`[Exam Check] Topic ${topicId} exam is NOT completed ✗`);
+                }
+                
+                return isCompleted;
             }
 
             // Add function to check if a topic is locked
             function isTopicLocked(topicId, totalXP) {
-                if (topicId === 1) return false; // First topic is always unlocked
+                console.log(`\n[Topic Lock Check] Checking if topic ${topicId} is locked...`);
+                console.log(`[Topic Lock Check] Current total XP: ${totalXP}`);
+                
+                if (topicId === 1) {
+                    console.log('[Topic Lock Check] Topic 1 is always unlocked');
+                    return false;
+                }
                 
                 const previousTopic = window.topicsData[topicId - 2];
-                if (!previousTopic) return false;
+                if (!previousTopic) {
+                    console.log('[Topic Lock Check] No previous topic found, unlocked by default');
+                    return false;
+                }
                 
                 const previousExam = previousTopic.subLevels.find(sub => sub.isExam);
-                if (!previousExam) return false;
+                if (!previousExam) {
+                    console.log('[Topic Lock Check] No exam found in previous topic, unlocked by default');
+                    return false;
+                }
+
+                // Check XP requirement first
+                const currentTopic = window.topicsData[topicId - 1];
+                if (currentTopic) {
+                    const minXPRequired = Math.min(...currentTopic.subLevels.map(sl => sl.xpRequired));
+                    if (totalXP < minXPRequired) {
+                        console.log(`[Topic Lock Check] Topic ${topicId} locked: Insufficient XP (have: ${totalXP}, need: ${minXPRequired})`);
+                        return true;
+                    }
+                }
                 
-                return !isTopicExamCompleted(topicId - 1);
+                const isExamCompleted = isTopicExamCompleted(topicId - 1);
+                console.log(`[Topic Lock Check] Previous topic (${topicId - 1}) exam completion status:`, isExamCompleted);
+                
+                if (!isExamCompleted) {
+                    console.log(`[Topic Lock Check] Topic ${topicId} locked: Previous topic's exam not completed`);
+                    return true;
+                }
+
+                console.log(`[Topic Lock Check] Topic ${topicId} is unlocked! All criteria met.`);
+                return false;
+            }
+
+            // Add function to mark exam as completed
+            function markExamCompleted(topicId, score) {
+                console.log(`[Debug] Marking exam for topic ${topicId} as completed`);
+                const completedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
+                
+                // Remove any existing entry for this topic
+                const existingIndex = completedExams.findIndex(exam => 
+                    (typeof exam === 'object' && exam.topicId === topicId) || 
+                    (typeof exam === 'number' && exam === topicId)
+                );
+                
+                if (existingIndex !== -1) {
+                    completedExams.splice(existingIndex, 1);
+                }
+                
+                // Add new entry
+                completedExams.push({ topicId, score: score || 100 });
+                localStorage.setItem('completedExams', JSON.stringify(completedExams));
+                
+                // Force a re-render to update locked states
+                console.log('[Debug] Forcing re-render of topics');
+                renderTopics();
             }
 
             // Add function to check if a level has been completed
             function isLevelCompleted(topicId, subLevelId) {
+                // Ensure proper formatting of IDs
+                topicId = parseInt(topicId);
+                subLevelId = parseFloat(subLevelId);
+                
+                console.log(`[Debug] Checking if level ${topicId}.${subLevelId} is completed`);
+                
                 const completedLevels = JSON.parse(localStorage.getItem('completedLevels') || '[]');
-                return completedLevels.some(level => level.topicId === topicId && level.subLevelId === subLevelId);
+                const isCompleted = completedLevels.some(level => {
+                    const storedTopicId = parseInt(level.topicId);
+                    const storedSubLevelId = parseFloat(level.subLevelId);
+                    return storedTopicId === topicId && storedSubLevelId === subLevelId;
+                });
+                
+                console.log(`[Debug] Level ${topicId}.${subLevelId} completion status:`, isCompleted);
+                return isCompleted;
             }
 
             // Theme toggle functionality
@@ -849,16 +983,26 @@
                             // Handle start button click
                             startButton.addEventListener('click', (e) => {
                                 e.stopPropagation();
+                                const formattedSubLevelId = parseFloat(subLevel.id);
                                 localStorage.setItem('currentLevel', JSON.stringify({
                                     topicId: topic.id,
-                                    subLevelId: subLevel.id,
+                                    subLevelId: formattedSubLevelId,
                                     title: subLevel.title,
                                     isExam: subLevel.isExam
                                 }));
 
-                                window.location.href = subLevel.isExam ? 
-                                    'exam.html' : 
-                                    `index.html?topic=${topic.id}&sublevel=${subLevel.id}`;
+                                // If this is an exam and it's completed, mark it as such
+                                if (subLevel.isExam && isLevelCompleted(topic.id, formattedSubLevelId)) {
+                                    const completedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
+                                    if (!completedExams.includes(topic.id)) {
+                                        completedExams.push(topic.id);
+                                        localStorage.setItem('completedExams', JSON.stringify(completedExams));
+                                        // Force a re-render to update locked states
+                                        renderTopics();
+                                    }
+                                }
+
+                                window.location.href = `index.html?topic=${topic.id}&sublevel=${formattedSubLevelId}`;
                             });
                         }
 
@@ -949,6 +1093,14 @@
                 if (event.target.classList.contains('modal')) {
                     event.target.style.display = 'none';
                 }
+            };
+
+            // Add logout function
+            window.logout = function() {
+                // Clear user data from localStorage
+                localStorage.clear();
+                // Redirect to login page
+                window.location.href = 'login.html';
             };
         });
     </script>

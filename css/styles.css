@@ -505,6 +505,8 @@ button:active {
     margin-bottom: 30px;
     gap: 15px;
     padding: 0 10px;
+    margin-left: 70px;
+    margin-top: 5px;
 }
 
 .progress-container {
@@ -897,4 +899,34 @@ input:checked + .toggle-slider:before {
     0% { transform: translate(-50%, -50%) scale(1); }
     50% { transform: translate(-50%, -50%) scale(1.05); }
     100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.back-button {
+    position: absolute;
+    top: 25px;
+    left: 25px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: transform 0.2s ease;
+    margin: 5px;
+}
+
+.back-button svg {
+    width: 28px;
+    height: 28px;
+    fill: currentColor;
+}
+
+.back-button:hover {
+    transform: scale(1.1);
+}
+
+.back-button:active {
+    transform: scale(0.95);
 } 

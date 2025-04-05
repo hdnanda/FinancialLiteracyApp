@@ -22,16 +22,16 @@ let preloadedNextQuestion = null;
 // XP System Constants
 const XP_SYSTEM = {
     LEVELS: {
-        1: { name: "Basics of Money", requiredXP: 0, baseXP: 5 },
-        2: { name: "Bank Basics", requiredXP: 100, baseXP: 5 },
-        3: { name: "Credit & Debt", requiredXP: 250, baseXP: 5 },
-        4: { name: "Investing 101", requiredXP: 450, baseXP: 5 },
-        5: { name: "Retirement Planning", requiredXP: 700, baseXP: 5 }
+        1: { name: "Basics of Money", requiredXP: 0, baseXP: 3 },
+        2: { name: "Bank Basics", requiredXP: 100, baseXP: 3 },
+        3: { name: "Credit & Debt", requiredXP: 250, baseXP: 3 },
+        4: { name: "Investing 101", requiredXP: 450, baseXP: 3 },
+        5: { name: "Retirement Planning", requiredXP: 700, baseXP: 3 }
     },
     BONUSES: {
-        STREAK: 5,
-        SPEED: 10,
-        PERFECT: 50
+        STREAK: 2,
+        SPEED: 5,
+        PERFECT: 5
     }
 };
 
@@ -49,6 +49,31 @@ function shuffleArray(array) {
 function loadQuestionsForSubLevel(topicId, subLevelId) {
     console.log('Loading questions for topic:', topicId, 'sublevel:', subLevelId);
     
+    // Ensure proper formatting of IDs
+    topicId = parseInt(topicId);
+    subLevelId = parseFloat(subLevelId);
+    
+    // Set currentLevelData based on the topic and sublevel
+    const topic = window.topicsData?.find(t => t.id === topicId);
+    const subLevel = topic?.subLevels?.find(s => s.id === subLevelId);
+    
+    if (topic && subLevel) {
+        window.currentLevelData = {
+            topicId: topicId,
+            subLevelId: subLevelId,
+            title: subLevel.title,
+            isExam: subLevel.isExam || false
+        };
+    }
+    
+    // Check if this is an exam
+    const isExam = window.currentLevelData && window.currentLevelData.isExam;
+    
+    // If it's an exam, start exam mode
+    if (isExam) {
+        window.startExamMode();
+    }
+
     // Check if questions are loaded
     if (!window.questions || !Array.isArray(window.questions)) {
         console.error('Questions not loaded properly. window.questions:', window.questions);
@@ -96,9 +121,6 @@ function loadQuestionsForSubLevel(topicId, subLevelId) {
     console.log('Questions per lesson setting:', questionsPerLesson);
     
     // Update progress text
-    const topic = window.topicsData?.find(t => t.id === topicId);
-    const subLevel = topic?.subLevels?.find(s => s.id === subLevelId);
-    
     if (topic && subLevel) {
         progressText.textContent = `${topic.title} - ${subLevel.title}`;
     } else {
@@ -234,28 +256,37 @@ function loadQuestion() {
  * @param {number} correctIndex - Index of the correct answer in the shuffled options
  */
 function handleAnswer(selectedIndex, correctIndex) {
-    // Prevent multiple answer selections
-    if (isProcessingQuestion) {
-        return;
-    }
+    if (isProcessingQuestion) return;
     isProcessingQuestion = true;
     
-    const question = currentQuestions[currentQuestionIndex];
     const isCorrect = selectedIndex === correctIndex;
-    
-    // Get the selected button
     const selectedButton = optionsContainer.children[selectedIndex];
+    const currentQuestion = currentQuestions[currentQuestionIndex];  // Get current question
     
     if (isCorrect) {
         correctAnswers++;
+        window.animateCorrectFeedback(selectedButton);
+        
+        // Check if this completes an exam
+        if (window.currentLevelData?.isExam) {
+            const passThreshold = 0.8; // 80% correct to pass
+            const progress = correctAnswers / questionsPerLesson;
+            
+            if (currentQuestionIndex === questionsPerLesson - 1) {
+                // This is the last question
+                const passed = progress >= passThreshold;
+                console.log(`[Debug] Exam completed. Progress: ${progress}, Passed: ${passed}`);
+                handleExamCompletion(passed);
+            }
+        }
         
         // Calculate XP with bonuses
         const currentLevel = getCurrentLevel();
         const baseXP = XP_SYSTEM.LEVELS[currentLevel].baseXP;
         const bonuses = {
-            streak: correctAnswers >= 3, // Streak bonus for 3 or more correct answers
-            speed: question.timeToAnswer && question.timeToAnswer < 10, // Speed bonus for answering under 10 seconds
-            perfect: correctAnswers === questionsPerLesson // Perfect score bonus
+            streak: correctAnswers >= 3,
+            speed: currentQuestion.timeToAnswer && currentQuestion.timeToAnswer < 10,
+            perfect: correctAnswers === questionsPerLesson
         };
         
         const earnedXP = addXP(baseXP, bonuses);
@@ -264,61 +295,20 @@ function handleAnswer(selectedIndex, correctIndex) {
         if (window.streakService && typeof window.streakService.handleStreakUpdate === 'function') {
             window.streakService.handleStreakUpdate(true);
         }
-        window.animateCorrectFeedback(selectedButton);
+    } else {
+        window.animateIncorrectFeedback(selectedButton);
+        const correctButton = optionsContainer.children[correctIndex];
+        correctButton.classList.add('correct');
         
-        // Play correct sound
-        if (window.AudioManager && window.AudioManager.isEnabled) {
-            window.AudioManager.playSound('correct');
+        // Handle exam mode if active
+        if (window.examManager && window.examManager.isExamActive) {
+            window.examManager.handleWrongAnswer();
         }
         
-        // Show success feedback
-        const feedbackContainer = document.getElementById('feedback-container');
-        const feedbackText = document.getElementById('feedback-text');
-        feedbackContainer.classList.remove('hidden');
-        // Force a reflow
-        void feedbackContainer.offsetWidth;
-        feedbackText.innerHTML = `
-            <span class="feedback-message">Excellent! 🎉</span>
-            <span class="explanation">+${earnedXP} XP earned!${question.explanation ? '<br>' + question.explanation : ''}</span>
-        `;
-        // Trigger animations
-        requestAnimationFrame(() => {
-            feedbackContainer.classList.add('visible');
-        });
-        
-        // Save progress after correct answer
-        saveProgress();
-    } else {
         // Update streak through streak service for incorrect answer
         if (window.streakService && typeof window.streakService.handleStreakUpdate === 'function') {
             window.streakService.handleStreakUpdate(false);
         }
-        
-        window.animateIncorrectFeedback(selectedButton);
-        
-        // Play incorrect sound
-        if (window.AudioManager && window.AudioManager.isEnabled) {
-            window.AudioManager.playSound('incorrect');
-        }
-        
-        // Show the correct answer
-        const correctButton = optionsContainer.children[correctIndex];
-        correctButton.classList.add('correct');
-        
-        // Show incorrect feedback with explanation
-        const feedbackContainer = document.getElementById('feedback-container');
-        const feedbackText = document.getElementById('feedback-text');
-        feedbackContainer.classList.remove('hidden');
-        // Force a reflow
-        void feedbackContainer.offsetWidth;
-        feedbackText.innerHTML = `<span class="feedback-message">That's not quite right</span>`;
-        if (question.explanation) {
-            feedbackText.innerHTML += `<span class="explanation">${question.explanation}</span>`;
-        }
-        // Trigger animations
-        requestAnimationFrame(() => {
-            feedbackContainer.classList.add('visible');
-        });
     }
     
     // Disable all options after selection
@@ -328,11 +318,15 @@ function handleAnswer(selectedIndex, correctIndex) {
     
     // Show and enable continue button
     const continueBtn = document.getElementById('continue-btn');
-    continueBtn.style.display = 'inline-block';
-    continueBtn.style.opacity = '1';
-    continueBtn.style.pointerEvents = 'auto';
-    continueBtn.style.visibility = 'visible';
-    continueBtn.onclick = handleContinue;
+    if (continueBtn) {
+        continueBtn.style.display = 'inline-block';
+        continueBtn.style.opacity = '1';
+        continueBtn.style.pointerEvents = 'auto';
+        continueBtn.style.visibility = 'visible';
+        continueBtn.style.position = 'relative';
+        continueBtn.style.zIndex = '50';
+        continueBtn.onclick = handleContinue;
+    }
     
     // Update progress
     updateProgress();
@@ -420,13 +414,14 @@ function showCompletionMessage() {
         }
 
         // If this is an exam, save the completed exam status
-        const currentLevelData = JSON.parse(localStorage.getItem('currentLevel') || '{}');
-        if (currentLevelData.isExam) {
+        if (window.examManager && window.examManager.isExamActive) {
             const completedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
-            if (!completedExams.includes(currentLevelData.topicId)) {
-                completedExams.push(currentLevelData.topicId);
+            if (!completedExams.includes(currentLevel)) {
+                completedExams.push(currentLevel);
                 localStorage.setItem('completedExams', JSON.stringify(completedExams));
             }
+            // Add bonus XP for completing exam
+            addXP(20, { exam: true });
         }
     } else {
         feedbackText.innerHTML = `
@@ -576,11 +571,16 @@ function initApp(levelQuestions = null) {
         
         // Setup continue button
         const continueBtn = document.getElementById('continue-btn');
-        continueBtn.onclick = handleContinue;
-        continueBtn.style.display = 'none';
-        continueBtn.style.opacity = '0';
-        continueBtn.style.pointerEvents = 'none';
-        continueBtn.style.visibility = 'hidden';
+        if (continueBtn) {
+            continueBtn.onclick = handleContinue;
+            continueBtn.style.display = 'none';
+            continueBtn.style.opacity = '0';
+            continueBtn.style.pointerEvents = 'none';
+            continueBtn.style.visibility = 'hidden';
+            continueBtn.style.position = 'relative';
+            continueBtn.style.zIndex = '50';
+            continueBtn.textContent = "Continue to Next Question 👍";
+        }
         
         // Initialize streak through streak service if available
         if (window.streakService && typeof window.streakService.initializeStreaks === 'function') {
@@ -809,4 +809,76 @@ function showMainMenu() {
             }
         });
     });
+}
+
+// Function to handle exam completion
+function handleExamCompletion(passed) {
+    console.log('\n[Exam Completion] Handling exam completion...');
+    console.log(`[Exam Completion] Exam passed:`, passed);
+    
+    if (passed && window.currentLevelData) {
+        const { topicId, subLevelId, isExam } = window.currentLevelData;
+        console.log(`[Exam Completion] Current level data:`, window.currentLevelData);
+        
+        if (isExam) {
+            // Mark the level as completed
+            const completedLevels = JSON.parse(localStorage.getItem('completedLevels') || '[]');
+            const levelEntry = { topicId, subLevelId };
+            
+            if (!completedLevels.some(level => 
+                level.topicId === levelEntry.topicId && 
+                level.subLevelId === levelEntry.subLevelId
+            )) {
+                console.log('[Exam Completion] Adding level to completed levels');
+                completedLevels.push(levelEntry);
+                localStorage.setItem('completedLevels', JSON.stringify(completedLevels));
+                console.log('[Exam Completion] Updated completed levels:', completedLevels);
+            }
+            
+            // Calculate score as percentage
+            const score = Math.round((correctAnswers / questionsPerLesson) * 100);
+            console.log(`[Exam Completion] Exam score: ${score}%`);
+            
+            // Mark the exam as completed with score
+            const completedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
+            const examEntry = { topicId, score };
+            
+            // Remove any existing entry for this topic
+            const existingIndex = completedExams.findIndex(exam => 
+                (typeof exam === 'object' && exam.topicId === topicId) || 
+                (typeof exam === 'number' && exam === topicId)
+            );
+            
+            if (existingIndex !== -1) {
+                console.log('[Exam Completion] Removing existing exam entry for topic', topicId);
+                completedExams.splice(existingIndex, 1);
+            }
+            
+            // Add new entry
+            console.log('[Exam Completion] Adding new exam entry:', examEntry);
+            completedExams.push(examEntry);
+            localStorage.setItem('completedExams', JSON.stringify(completedExams));
+            
+            // Verify the exam was properly saved
+            const savedExams = JSON.parse(localStorage.getItem('completedExams') || '[]');
+            const examSaved = savedExams.some(exam => 
+                (typeof exam === 'object' && exam.topicId === topicId) || 
+                (typeof exam === 'number' && exam === topicId)
+            );
+            console.log('[Exam Completion] Exam completion verified:', examSaved);
+            
+            // Update XP
+            const currentXP = parseInt(localStorage.getItem('totalXP') || '0');
+            const topic = window.topicsData.find(t => t.id === topicId);
+            const subLevel = topic?.subLevels.find(s => s.id === subLevelId);
+            
+            if (subLevel) {
+                const newXP = currentXP + (subLevel.xpReward || 0);
+                console.log(`[Exam Completion] Updating XP from ${currentXP} to ${newXP}`);
+                localStorage.setItem('totalXP', newXP.toString());
+            }
+        }
+    } else if (!passed) {
+        console.log('[Exam Completion] Exam failed - no completion status saved');
+    }
 } 

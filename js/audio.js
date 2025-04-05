@@ -33,6 +33,26 @@ const AudioManager = {
             file: 'assets/sounds/whoosh.mp3',
             volume: 0.5,
             description: 'Whoosh sound effect for answer transitions'
+        },
+        examStart: {
+            file: 'assets/sounds/whoosh.mp3',
+            volume: 0.8,
+            description: 'Sound played when starting an exam'
+        },
+        examWarning: {
+            file: 'assets/sounds/incorrect.mp3',
+            volume: 0.7,
+            description: 'Warning sound for exam mode'
+        },
+        examComplete: {
+            file: 'assets/sounds/level-complete.mp3',
+            volume: 0.9,
+            description: 'Celebration sound for completing an exam'
+        },
+        examFail: {
+            file: 'assets/sounds/incorrect.mp3',
+            volume: 0.8,
+            description: 'Failure sound for exam mode'
         }
     },
 
@@ -51,12 +71,6 @@ const AudioManager = {
 
         try {
             console.log('🎵 Starting audio system initialization...');
-            console.log('Current state:', {
-                isEnabled: this.isEnabled,
-                hasUserInteracted: this.hasUserInteracted,
-                isAudioSupported: this.isAudioSupported,
-                audioContext: this.audioContext ? 'exists' : 'null'
-            });
             
             // Check browser audio support
             this.checkAudioSupport();
@@ -72,13 +86,6 @@ const AudioManager = {
             
             this.isInitialized = true;
             console.log('✅ Audio system initialized successfully');
-            console.log('Final state:', {
-                isEnabled: this.isEnabled,
-                hasUserInteracted: this.hasUserInteracted,
-                isAudioSupported: this.isAudioSupported,
-                audioContext: this.audioContext ? 'exists' : 'null',
-                audioCache: Object.keys(this.audioCache)
-            });
             
             // Verify audio files are loaded
             this.verifyAudioFiles();
